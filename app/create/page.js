@@ -54,7 +54,7 @@ function SetupScreen({ onStart }) {
         </button>
       </div>
 
-      <div className="flex gap-3 mt-10">
+      <div className="flex gap-3 mt-10 flex-wrap justify-center max-w-[380px]">
         {[
           { icon: "✨", label: "AI helps write", desc: "Describe your story idea" },
           { icon: "✍️", label: "Write your own", desc: "Type or paste text" },
