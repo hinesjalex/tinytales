@@ -299,8 +299,9 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
 /* ============================================================
    BOOK EDITOR — all pages, toolbar, preview toggle
    ============================================================ */
-function BookEditor({ name, pages, setPages, onPreview }) {
+function BookEditor({ name, pages, setPages, title, setTitle, coverImage, setCoverImage, onPreview }) {
   const renumber = (pgs) => pgs.map((p, i) => ({ ...p, pageNumber: i + 1 }));
+  const coverFileRef = useRef(null);
 
   const updatePage = (idx, updated) => {
     const next = [...pages];
@@ -328,7 +329,15 @@ function BookEditor({ name, pages, setPages, onPreview }) {
     setPages(renumber(next));
   };
 
-  const hasContent = pages.some((p) => p.text.trim());
+  const hasContent = pages.some((p) => p.text.trim() || p.imageUrl);
+
+  const handleCoverUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setCoverImage(ev.target.result);
+    reader.readAsDataURL(file);
+  };
 
   return (
     <div className="min-h-screen bg-cream/50">
@@ -353,6 +362,45 @@ function BookEditor({ name, pages, setPages, onPreview }) {
 
       {/* Pages */}
       <div className="max-w-[700px] mx-auto px-6 py-8 flex flex-col gap-4">
+
+        {/* Cover card */}
+        <div className="bg-white rounded-2xl border-2 border-accent/20 overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between px-4 py-2.5 bg-accent/5 border-b border-accent/10">
+            <span className="text-xs font-semibold text-accent">Book Cover</span>
+          </div>
+          <div className="flex flex-col md:flex-row">
+            {/* Cover illustration */}
+            <div className="md:w-[45%] p-4 border-b md:border-b-0 md:border-r border-ink/[0.04]">
+              {coverImage ? (
+                <div className="relative group">
+                  <img src={coverImage} alt="Cover" className="w-full aspect-[3/4] object-cover rounded-xl" />
+                  <button onClick={() => { setCoverImage(null); if (coverFileRef.current) coverFileRef.current.value = ""; }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                </div>
+              ) : (
+                <div className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-accent/30 flex flex-col items-center justify-center cursor-pointer bg-accent/[0.03] hover:border-accent transition-colors" onClick={() => coverFileRef.current?.click()}>
+                  <div className="text-3xl mb-2">📕</div>
+                  <div className="text-xs text-accent font-medium">Upload cover illustration</div>
+                  <div className="text-[10px] text-warm-400 mt-0.5">Or leave blank for a text cover</div>
+                </div>
+              )}
+              <input ref={coverFileRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+            </div>
+
+            {/* Cover title */}
+            <div className="md:w-[55%] p-4 flex flex-col justify-center">
+              <label className="text-xs font-semibold text-warm-500 uppercase tracking-widest mb-2 block">Book Title</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={`${name}'s Story`}
+                className="w-full px-3 py-3 text-lg font-display rounded-xl border-2 border-warm-200 bg-white outline-none focus:border-accent transition-colors"
+              />
+              <p className="text-[11px] text-warm-400 mt-2">This appears on the cover and title page.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Bulk paste option */}
         <BulkPasteBar pages={pages} setPages={setPages} name={name} />
 
@@ -456,14 +504,14 @@ function BulkPasteBar({ pages, setPages, name }) {
 /* ============================================================
    BOOK PREVIEW — swipeable reader
    ============================================================ */
-function BookPreview({ name, title, pages, onBack, onFinish }) {
+function BookPreview({ name, title, pages, coverImage, onBack, onFinish }) {
   const [i, setI] = useState(0);
   const [fading, setFading] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
   const [titleVal, setTitleVal] = useState(title);
 
   const filledPages = pages.filter((p) => p.text.trim() || p.imageUrl || p.textPosition === "hidden");
-  const allPages = [{ isCover: true }, ...filledPages];
+  const allPages = [{ isCover: true, imageUrl: coverImage }, ...filledPages];
   const total = allPages.length;
   const current = allPages[i];
 
@@ -616,6 +664,7 @@ export default function CreatePage() {
   const [name, setName] = useState("");
   const [pages, setPages] = useState(initialBook());
   const [title, setTitle] = useState("");
+  const [coverImage, setCoverImage] = useState(null);
   const [shareId, setShareId] = useState(null);
 
   // Setup → mode picker
@@ -699,6 +748,10 @@ export default function CreatePage() {
           name={name}
           pages={pages}
           setPages={setPages}
+          title={title}
+          setTitle={setTitle}
+          coverImage={coverImage}
+          setCoverImage={setCoverImage}
           onPreview={() => setPhase("preview")}
         />
       )}
@@ -708,6 +761,7 @@ export default function CreatePage() {
           name={name}
           title={title}
           pages={pages}
+          coverImage={coverImage}
           onBack={() => setPhase("editor")}
           onFinish={handleFinish}
         />
@@ -721,6 +775,7 @@ export default function CreatePage() {
           onMakeAnother={() => {
             setPages(initialBook());
             setTitle("");
+            setCoverImage(null);
             setShareId(null);
             setPhase("setup");
           }}
