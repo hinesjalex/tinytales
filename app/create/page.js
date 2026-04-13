@@ -250,34 +250,45 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
         </div>
 
         {/* Text zone */}
-        <div className="md:w-[55%] p-4">
-          {page.textPosition === "hidden" ? (
-            <div className="flex flex-col items-center justify-center h-full min-h-[180px] text-center">
-              <div className="text-warm-400 text-sm mb-2">Text hidden — illustration has its own text</div>
+        <div className="md:w-[55%] p-4 flex flex-col">
+          {/* Text position toggle — visible when image is uploaded */}
+          {page.imageUrl && (
+            <div className="flex gap-1 mb-3 p-1 bg-warm-100/50 rounded-lg w-fit">
               <button
                 onClick={() => onChange({ ...page, textPosition: "below" })}
-                className="text-xs text-accent underline"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all ${
+                  page.textPosition !== "hidden"
+                    ? "bg-white text-ink shadow-sm"
+                    : "text-warm-500 hover:text-ink"
+                }`}
               >
-                Show text zone
+                📝 Text below
+              </button>
+              <button
+                onClick={() => onChange({ ...page, textPosition: "hidden" })}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-all ${
+                  page.textPosition === "hidden"
+                    ? "bg-white text-ink shadow-sm"
+                    : "text-warm-500 hover:text-ink"
+                }`}
+              >
+                🖼️ Image only
               </button>
             </div>
+          )}
+
+          {page.textPosition === "hidden" ? (
+            <div className="flex flex-col items-center justify-center flex-1 min-h-[180px] text-center">
+              <div className="text-warm-400 text-sm">No text on this page</div>
+              <div className="text-warm-400 text-xs mt-1">The illustration speaks for itself</div>
+            </div>
           ) : (
-            <>
-              <textarea
-                value={page.text}
-                onChange={(e) => onChange({ ...page, text: e.target.value })}
-                placeholder="Write this page's text…"
-                className="w-full h-full min-h-[180px] text-[15px] leading-relaxed text-warm-800 bg-transparent outline-none resize-none font-body placeholder:text-warm-300"
-              />
-              {page.imageUrl && (
-                <button
-                  onClick={() => onChange({ ...page, textPosition: "hidden" })}
-                  className="text-[11px] text-warm-400 hover:text-accent mt-2 transition-colors"
-                >
-                  My illustration already has text — hide text zone
-                </button>
-              )}
-            </>
+            <textarea
+              value={page.text}
+              onChange={(e) => onChange({ ...page, text: e.target.value })}
+              placeholder="Write this page's text…"
+              className="w-full flex-1 min-h-[180px] text-[15px] leading-relaxed text-warm-800 bg-transparent outline-none resize-none font-body placeholder:text-warm-300"
+            />
           )}
         </div>
       </div>
