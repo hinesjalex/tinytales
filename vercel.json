@@ -1,0 +1,18 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "functions": {
+    "app/api/generate-story/route.js": {
+      "maxDuration": 30
+    },
+    "app/api/generate-preview-image/route.js": {
+      "maxDuration": 60
+    },
+    "app/api/generate-illustrations/route.js": {
+      "maxDuration": 300
+    },
+    "app/api/save-book/route.js": {
+      "maxDuration": 10
+    }
+  }
+}
