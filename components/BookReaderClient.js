@@ -90,11 +90,11 @@ export default function BookReaderClient({ title, pages, childName, shareId, sho
               /* === STANDARD PAGE === illustration top, text below */
               <>
                 {/* Illustration area — top 70% */}
-                <div className="relative" style={{ aspectRatio: "4/3" }}>
+                <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
                   {hasImage ? (
-                    <img src={current.imageUrl} alt="" className="w-full h-full object-cover" />
+                    <img src={current.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center" style={{ background: PAGE_COLORS[colorIndex] }}>
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: PAGE_COLORS[colorIndex] }}>
                       <span className="text-4xl opacity-30">🎨</span>
                     </div>
                   )}

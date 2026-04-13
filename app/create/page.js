@@ -532,17 +532,17 @@ function BookPreview({ name, title, pages, onBack, onFinish }) {
             ) : (
               /* Standard: illustration top, text below */
               <>
-                <div className="relative" style={{ aspectRatio: "4/3" }}>
+                <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
                   {current.imageUrl ? (
-                    <img src={current.imageUrl} alt="" className="w-full h-full object-cover" />
+                    <img src={current.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center" style={{ background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
+                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
                       <span className="text-4xl opacity-30">🎨</span>
                     </div>
                   )}
                 </div>
                 <div className="px-6 py-5 bg-cream/80">
-                  <p className="text-[14px] leading-[1.75] text-ink/85 text-center font-body break-words" style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>{current.text}</p>
+                  <p className="text-[14px] leading-[1.75] text-ink/85 text-center font-body break-words" style={{ overflowWrap: "break-word" }}>{current.text}</p>
                   <div className="text-[11px] text-warm-400 text-right mt-2">{i}/{total - 1}</div>
                 </div>
               </>
