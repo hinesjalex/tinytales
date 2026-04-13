@@ -89,8 +89,8 @@ export default function BookReaderClient({ title, pages, childName, shareId, sho
             ) : (
               /* === STANDARD PAGE === illustration top, text below */
               <>
-                {/* Illustration area — top 70% */}
-                <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                {/* Illustration area — top, fixed 4:3 ratio */}
+                <div className="relative overflow-hidden w-full" style={{ paddingTop: "75%" }}>
                   {hasImage ? (
                     <img src={current.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (

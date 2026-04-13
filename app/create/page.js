@@ -532,7 +532,7 @@ function BookPreview({ name, title, pages, onBack, onFinish }) {
             ) : (
               /* Standard: illustration top, text below */
               <>
-                <div className="relative overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                <div className="relative overflow-hidden w-full" style={{ paddingTop: "75%" }}>
                   {current.imageUrl ? (
                     <img src={current.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
                   ) : (
