@@ -6,7 +6,7 @@ import Link from "next/link";
 const MAX_PAGES = 20;
 
 function emptyPage(num) {
-  return { id: crypto.randomUUID(), pageNumber: num, text: "", illustrationHint: "", imageUrl: null };
+  return { id: crypto.randomUUID(), pageNumber: num, text: "", illustrationHint: "", imageUrl: null, textPosition: "below" };
 }
 
 function initialBook() {
@@ -251,12 +251,34 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
 
         {/* Text zone */}
         <div className="md:w-[55%] p-4">
-          <textarea
-            value={page.text}
-            onChange={(e) => onChange({ ...page, text: e.target.value })}
-            placeholder="Write this page's text…"
-            className="w-full h-full min-h-[180px] text-[15px] leading-relaxed text-warm-800 bg-transparent outline-none resize-none font-body placeholder:text-warm-300"
-          />
+          {page.textPosition === "hidden" ? (
+            <div className="flex flex-col items-center justify-center h-full min-h-[180px] text-center">
+              <div className="text-warm-400 text-sm mb-2">Text hidden — illustration has its own text</div>
+              <button
+                onClick={() => onChange({ ...page, textPosition: "below" })}
+                className="text-xs text-accent underline"
+              >
+                Show text zone
+              </button>
+            </div>
+          ) : (
+            <>
+              <textarea
+                value={page.text}
+                onChange={(e) => onChange({ ...page, text: e.target.value })}
+                placeholder="Write this page's text…"
+                className="w-full h-full min-h-[180px] text-[15px] leading-relaxed text-warm-800 bg-transparent outline-none resize-none font-body placeholder:text-warm-300"
+              />
+              {page.imageUrl && (
+                <button
+                  onClick={() => onChange({ ...page, textPosition: "hidden" })}
+                  className="text-[11px] text-warm-400 hover:text-accent mt-2 transition-colors"
+                >
+                  My illustration already has text — hide text zone
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -380,6 +402,7 @@ function BulkPasteBar({ pages, setPages, name }) {
       text: chunk,
       illustrationHint: "",
       imageUrl: null,
+      textPosition: "below",
     }));
 
     setPages(newPages);
@@ -428,7 +451,7 @@ function BookPreview({ name, title, pages, onBack, onFinish }) {
   const [editTitle, setEditTitle] = useState(false);
   const [titleVal, setTitleVal] = useState(title);
 
-  const filledPages = pages.filter((p) => p.text.trim());
+  const filledPages = pages.filter((p) => p.text.trim() || p.imageUrl || p.textPosition === "hidden");
   const allPages = [{ isCover: true }, ...filledPages];
   const total = allPages.length;
   const current = allPages[i];
@@ -468,37 +491,51 @@ function BookPreview({ name, title, pages, onBack, onFinish }) {
 
       {/* Book */}
       <div className="w-full max-w-[340px]">
-        <div className="rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(30,24,18,0.15),0_4px_12px_rgba(30,24,18,0.06)] cursor-pointer select-none" onClick={() => go(i + 1)}>
-          <div className="flex flex-col items-center justify-center relative" style={{ aspectRatio: "3/4", opacity: fading ? 0 : 1, transition: "opacity 0.3s ease", overflow: "hidden" }}>
-            {/* Background: image or color */}
-            {current.imageUrl ? (
-              <img src={current.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(30,24,18,0.15),0_4px_12px_rgba(30,24,18,0.06)] cursor-pointer select-none bg-white" onClick={() => go(i + 1)}>
+          <div className="flex flex-col transition-opacity duration-300" style={{ opacity: fading ? 0 : 1 }}>
+            {current.isCover ? (
+              /* Cover: illustration with title overlaid */
+              <div className="relative" style={{ aspectRatio: "3/4" }}>
+                {current.imageUrl ? (
+                  <img src={current.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0" style={{ background: PAGE_COLORS[0] }} />
+                )}
+                <div className="absolute inset-0 flex flex-col items-center justify-end p-8 bg-gradient-to-t from-black/50 via-transparent to-transparent">
+                  <div className="font-display text-[26px] leading-[1.15] tracking-tight text-white drop-shadow-lg text-center">{titleVal}</div>
+                  <div className="text-[13px] text-white/75 mt-2 italic">A story made just for {name}</div>
+                </div>
+              </div>
+            ) : current.textPosition === "hidden" ? (
+              /* Image only: parent's illustration has baked-in text */
+              <div className="relative" style={{ aspectRatio: "3/4" }}>
+                {current.imageUrl ? (
+                  <img src={current.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center" style={{ aspectRatio: "3/4", background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
+                    <span className="text-warm-400 text-sm">Image only</span>
+                  </div>
+                )}
+                <div className="absolute bottom-3 right-4 text-[11px] text-warm-400 bg-white/70 px-1.5 py-0.5 rounded">{i}/{total - 1}</div>
+              </div>
             ) : (
-              <div className="absolute inset-0" style={{ background: PAGE_COLORS[i % PAGE_COLORS.length] }} />
+              /* Standard: illustration top, text below */
+              <>
+                <div className="relative" style={{ aspectRatio: "4/3" }}>
+                  {current.imageUrl ? (
+                    <img src={current.imageUrl} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center" style={{ background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
+                      <span className="text-4xl opacity-30">🎨</span>
+                    </div>
+                  )}
+                </div>
+                <div className="px-6 py-5 bg-cream/80">
+                  <p className="text-[14px] leading-[1.75] text-ink/85 text-center font-body">{current.text}</p>
+                  <div className="text-[11px] text-warm-400 text-right mt-2">{i}/{total - 1}</div>
+                </div>
+              </>
             )}
-
-            {/* Content */}
-            <div className={`relative z-10 flex flex-col items-center justify-center h-full w-full p-8 ${current.imageUrl ? "bg-gradient-to-t from-black/60 via-black/20 to-transparent justify-end" : ""}`}>
-              {current.isCover ? (
-                <>
-                  <div className={`font-display text-[26px] leading-[1.15] tracking-tight text-center ${current.imageUrl ? "text-white drop-shadow-lg mt-auto" : ""}`}>
-                    {titleVal}
-                  </div>
-                  <div className={`text-[13px] mt-2.5 italic ${current.imageUrl ? "text-white/80" : "text-warm-600"}`}>
-                    A story made just for {name}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className={`text-[15px] leading-[1.7] text-center ${current.imageUrl ? "text-white drop-shadow" : "text-warm-900"}`}>
-                    {current.text}
-                  </div>
-                  <div className={`absolute bottom-3.5 right-5 text-[11px] ${current.imageUrl ? "text-white/50" : "text-warm-500"}`}>
-                    {i}/{total - 1}
-                  </div>
-                </>
-              )}
-            </div>
           </div>
         </div>
 
@@ -584,6 +621,7 @@ export default function CreatePage() {
       text: p.text,
       illustrationHint: p.illustrationHint || "",
       imageUrl: null,
+      textPosition: "below",
     }));
     setPages(newPages);
     setPhase("editor");
