@@ -531,21 +531,23 @@ function BookPreview({ name, title, pages, onBack, onFinish }) {
               </div>
             ) : (
               /* Standard: illustration top, text below */
-              <>
-                <div className="relative overflow-hidden w-full" style={{ paddingTop: "75%" }}>
-                  {current.imageUrl ? (
-                    <img src={current.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center" style={{ background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
-                      <span className="text-4xl opacity-30">🎨</span>
+              <div>
+                {current.imageUrl ? (
+                  <div style={{ position: "relative", width: "100%", paddingTop: "75%", overflow: "hidden" }}>
+                    <img src={current.imageUrl} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                ) : (
+                  <div style={{ position: "relative", width: "100%", paddingTop: "75%", overflow: "hidden", background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: 36, opacity: 0.3 }}>🎨</span>
                     </div>
-                  )}
+                  </div>
+                )}
+                <div style={{ padding: "20px 24px", background: "rgba(253,250,245,0.8)" }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.75, color: "rgba(30,24,18,0.85)", textAlign: "center", overflowWrap: "break-word", wordWrap: "break-word", margin: 0 }}>{current.text}</p>
+                  <div style={{ fontSize: 11, color: "#C4B5A0", textAlign: "right", marginTop: 8 }}>{i}/{total - 1}</div>
                 </div>
-                <div className="px-6 py-5 bg-cream/80">
-                  <p className="text-[14px] leading-[1.75] text-ink/85 text-center font-body break-words" style={{ overflowWrap: "break-word" }}>{current.text}</p>
-                  <div className="text-[11px] text-warm-400 text-right mt-2">{i}/{total - 1}</div>
-                </div>
-              </>
+              </div>
             )}
           </div>
         </div>
