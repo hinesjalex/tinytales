@@ -73,12 +73,12 @@ export default function BookReaderClient({ title, pages, childName, shareId, sho
                 </div>
               </div>
             ) : current.textPosition === "hidden" ? (
-              /* === IMAGE ONLY PAGE === parent's illustration has baked-in text */
-              <div className="relative" style={{ aspectRatio: "3/4" }}>
+              /* === IMAGE ONLY PAGE === parent's illustration has baked-in text — no cropping */
+              <div className="relative">
                 {hasImage ? (
-                  <img src={current.imageUrl} alt="" className="w-full h-full object-cover" />
+                  <img src={current.imageUrl} alt="" className="w-full block" style={{ display: "block", width: "100%" }} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center" style={{ aspectRatio: "3/4", background: PAGE_COLORS[colorIndex] }}>
+                  <div className="flex items-center justify-center" style={{ aspectRatio: "3/4", background: PAGE_COLORS[colorIndex] }}>
                     <span className="text-warm-400 text-sm">Image only page</span>
                   </div>
                 )}

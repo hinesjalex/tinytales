@@ -518,12 +518,12 @@ function BookPreview({ name, title, pages, onBack, onFinish }) {
                 </div>
               </div>
             ) : current.textPosition === "hidden" ? (
-              /* Image only: parent's illustration has baked-in text */
-              <div className="relative" style={{ aspectRatio: "3/4" }}>
+              /* Image only: parent's illustration has baked-in text — show full image, no cropping */
+              <div className="relative">
                 {current.imageUrl ? (
-                  <img src={current.imageUrl} alt="" className="w-full h-full object-cover" />
+                  <img src={current.imageUrl} alt="" className="w-full block rounded-none" style={{ display: "block", width: "100%" }} />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center" style={{ aspectRatio: "3/4", background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
+                  <div className="flex items-center justify-center" style={{ aspectRatio: "3/4", background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
                     <span className="text-warm-400 text-sm">Image only</span>
                   </div>
                 )}
