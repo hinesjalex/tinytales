@@ -226,7 +226,7 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
           {page.imageUrl ? (
             <div className="relative group">
               <img src={page.imageUrl} alt="" className="w-full aspect-square object-cover rounded-xl" />
-              <button onClick={() => onChange({ ...page, imageUrl: null })} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+              <button onClick={() => { onChange({ ...page, imageUrl: null, textPosition: "below" }); if (fileRef.current) fileRef.current.value = ""; }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
             </div>
           ) : (
             <div className="w-full aspect-square rounded-xl border-2 border-dashed border-warm-200 flex flex-col items-center justify-center cursor-pointer bg-cream/30 hover:border-accent transition-colors" onClick={() => setShowIllustrationOptions(!showIllustrationOptions)}>
@@ -542,7 +542,7 @@ function BookPreview({ name, title, pages, onBack, onFinish }) {
                   )}
                 </div>
                 <div className="px-6 py-5 bg-cream/80">
-                  <p className="text-[14px] leading-[1.75] text-ink/85 text-center font-body">{current.text}</p>
+                  <p className="text-[14px] leading-[1.75] text-ink/85 text-center font-body break-words" style={{ overflowWrap: "break-word", wordWrap: "break-word" }}>{current.text}</p>
                   <div className="text-[11px] text-warm-400 text-right mt-2">{i}/{total - 1}</div>
                 </div>
               </>

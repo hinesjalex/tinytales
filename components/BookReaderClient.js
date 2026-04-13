@@ -102,7 +102,7 @@ export default function BookReaderClient({ title, pages, childName, shareId, sho
 
                 {/* Text area — bottom band */}
                 <div className="px-6 py-5 bg-cream/80">
-                  <p className="text-[14px] leading-[1.75] text-ink/85 text-center font-body">
+                  <p className="text-[14px] leading-[1.75] text-ink/85 text-center font-body break-words" style={{ overflowWrap: "break-word" }}>
                     {current.text}
                   </p>
                   <div className="text-[11px] text-warm-400 text-right mt-2">
