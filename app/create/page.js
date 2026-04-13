@@ -615,13 +615,40 @@ function BookPreview({ name, title, pages, coverImage, onBack, onFinish }) {
 }
 
 /* ============================================================
-   FINISH SCREEN — share + print CTA
+   FINISH SCREEN — the book IS the payoff
+   Read it, then share/print/edit
    ============================================================ */
-function FinishScreen({ name, title, shareId, onMakeAnother }) {
+function FinishScreen({ name, title, pages, coverImage, shareId, onEdit, onMakeAnother }) {
   const [copied, setCopied] = useState(false);
-  const shareUrl = typeof window !== "undefined" ? `${window.location.origin}/book/${shareId}` : `/book/${shareId}`;
+  const [i, setI] = useState(0);
+  const [fading, setFading] = useState(false);
+
+  const shareUrl = shareId && typeof window !== "undefined"
+    ? `${window.location.origin}/book/${shareId}`
+    : null;
+
+  const filledPages = pages.filter((p) => p.text.trim() || p.imageUrl || p.textPosition === "hidden");
+  const allPages = [
+    { isCover: true, imageUrl: coverImage },
+    ...filledPages,
+    { isEnd: true },
+  ];
+  const total = allPages.length;
+  const current = allPages[i];
+
+  const go = (to) => {
+    if (fading || to < 0 || to >= total) return;
+    setFading(true);
+    setTimeout(() => { setI(to); setFading(false); }, 250);
+  };
+
+  const PAGE_COLORS = [
+    "#E8F5E2", "#FFF8E7", "#FDE8D0", "#E8E0F5", "#FFF4D6",
+    "#E2F0F5", "#F5E8E2", "#E8F5EC", "#F5F0E1", "#FDEBD3",
+  ];
 
   const handleShare = async () => {
+    if (!shareUrl) return;
     if (navigator.share) {
       try { await navigator.share({ title, text: `Read ${name}'s storybook!`, url: shareUrl }); } catch {}
     } else {
@@ -632,26 +659,113 @@ function FinishScreen({ name, title, shareId, onMakeAnother }) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12 text-center bg-cream">
-      <div className="text-5xl mb-4">🎉</div>
-      <h2 className="font-display text-3xl tracking-tight mb-2">{name}'s book is ready</h2>
-      <p className="text-sm text-warm-600 font-light mb-8">Share it with family or order a printed copy.</p>
-
-      <div className="flex flex-col gap-3 w-full max-w-[320px]">
-        <button onClick={handleShare} className="w-full py-4 rounded-xl text-base font-semibold bg-accent text-cream font-body">
-          {copied ? "Link copied!" : "Send to family"}
-        </button>
-        <button className="w-full py-4 rounded-xl text-base font-semibold bg-ink text-cream font-body opacity-70 cursor-not-allowed" title="Coming soon">
-          🖨️ Print hardcover — coming soon
-        </button>
-        <button onClick={onMakeAnother} className="text-sm text-warm-500 mt-4 font-body">
-          ← Make another book
-        </button>
+    <div className="min-h-screen flex flex-col items-center px-6 py-12 bg-cream">
+      {/* Quiet header */}
+      <div className="text-center mb-6 mt-4">
+        <h2 className="font-display text-xl tracking-tight text-warm-700">{name}'s book is ready</h2>
       </div>
 
-      <p className="text-xs text-warm-400 mt-6">
-        Read on iPad · Share the link · Treasure it forever
-      </p>
+      {/* The book */}
+      <div className="w-full max-w-[340px]">
+        <div
+          className="rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(30,24,18,0.15),0_4px_12px_rgba(30,24,18,0.06)] cursor-pointer select-none bg-white"
+          onClick={() => go(i + 1)}
+        >
+          <div className="flex flex-col transition-opacity duration-300" style={{ opacity: fading ? 0 : 1 }}>
+            {current.isCover ? (
+              /* --- COVER --- */
+              <div className="relative" style={{ aspectRatio: "3/4" }}>
+                {current.imageUrl ? (
+                  <img src={current.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover" />
+                ) : (
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(145deg, #F5EDE2 0%, #EDE5D8 100%)" }} />
+                )}
+                <div className="absolute inset-0 flex flex-col items-center justify-end p-8 bg-gradient-to-t from-black/50 via-transparent to-transparent">
+                  <div className="font-display text-[26px] leading-[1.15] tracking-tight text-white drop-shadow-lg text-center">{title}</div>
+                  <div className="text-[13px] text-white/75 mt-2 italic">A story made just for {name}</div>
+                </div>
+              </div>
+            ) : current.isEnd ? (
+              /* --- THE END card --- */
+              <div className="flex flex-col items-center justify-center text-center px-8 py-16" style={{ aspectRatio: "3/4", background: "linear-gradient(145deg, #FFF8E7 0%, #F5EDE2 100%)" }}>
+                <div className="text-4xl mb-4">✨</div>
+                <div className="font-display text-2xl tracking-tight mb-3">The End</div>
+                <p className="text-sm text-warm-600 font-light leading-relaxed mb-6">
+                  You made something beautiful for {name}.<br />
+                  Want to hold it in your hands?
+                </p>
+                <div className="w-12 h-px bg-warm-300 mb-6" />
+                <div className="text-xs text-warm-500">
+                  🖨️ Print hardcover — coming soon
+                </div>
+              </div>
+            ) : current.textPosition === "hidden" ? (
+              /* --- IMAGE ONLY --- */
+              <div className="relative">
+                {current.imageUrl ? (
+                  <img src={current.imageUrl} alt="" className="w-full block" style={{ display: "block", width: "100%" }} />
+                ) : (
+                  <div className="flex items-center justify-center" style={{ aspectRatio: "3/4", background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
+                    <span className="text-warm-400 text-sm">Image only</span>
+                  </div>
+                )}
+                <div className="absolute bottom-3 right-4 text-[11px] text-warm-400 bg-white/70 px-1.5 py-0.5 rounded">{i}/{total - 2}</div>
+              </div>
+            ) : (
+              /* --- STANDARD PAGE --- */
+              <div>
+                {current.imageUrl ? (
+                  <div style={{ position: "relative", width: "100%", paddingTop: "75%", overflow: "hidden" }}>
+                    <img src={current.imageUrl} alt="" style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+                  </div>
+                ) : (
+                  <div style={{ position: "relative", width: "100%", paddingTop: "75%", overflow: "hidden", background: PAGE_COLORS[i % PAGE_COLORS.length] }}>
+                    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: 36, opacity: 0.3 }}>🎨</span>
+                    </div>
+                  </div>
+                )}
+                <div style={{ padding: "20px 24px", background: "rgba(253,250,245,0.8)" }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.75, color: "rgba(30,24,18,0.85)", textAlign: "center", overflowWrap: "break-word", margin: 0 }}>{current.text}</p>
+                  <div style={{ fontSize: 11, color: "#C4B5A0", textAlign: "right", marginTop: 8 }}>{i}/{total - 2}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dots */}
+        <div className="flex justify-center gap-1 mt-3 flex-wrap max-w-[300px] mx-auto">
+          {allPages.map((_, j) => (
+            <div key={j} onClick={() => go(j)} className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${j === i ? "w-[14px] bg-accent" : "w-1.5 bg-warm-300"}`} />
+          ))}
+        </div>
+        <div className="text-center mt-2 text-[13px] text-warm-500">
+          {i === 0 ? "Tap to start reading →" : current.isEnd ? "" : i < total - 1 ? "Tap →" : ""}
+        </div>
+      </div>
+
+      {/* Actions — always visible below the book */}
+      <div className="flex flex-col items-center gap-3 mt-8 w-full max-w-[320px]">
+        {/* Share */}
+        {shareUrl ? (
+          <button onClick={handleShare} className="w-full py-3.5 rounded-xl text-[15px] font-semibold bg-accent text-cream font-body">
+            {copied ? "Link copied!" : "Share with family"}
+          </button>
+        ) : (
+          <div className="text-xs text-warm-400 italic">Book saved — sharing link not available</div>
+        )}
+
+        {/* Edit + Make another */}
+        <div className="flex gap-3 w-full">
+          <button onClick={onEdit} className="flex-1 py-3 rounded-xl text-sm font-medium border-2 border-warm-200 text-warm-700 font-body hover:border-accent transition-colors">
+            ✏️ Edit book
+          </button>
+          <button onClick={onMakeAnother} className="flex-1 py-3 rounded-xl text-sm font-medium border-2 border-warm-200 text-warm-700 font-body hover:border-accent transition-colors">
+            📖 New book
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -771,7 +885,10 @@ export default function CreatePage() {
         <FinishScreen
           name={name}
           title={title}
+          pages={pages}
+          coverImage={coverImage}
           shareId={shareId}
+          onEdit={() => setPhase("editor")}
           onMakeAnother={() => {
             setPages(initialBook());
             setTitle("");
