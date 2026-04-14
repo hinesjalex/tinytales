@@ -8,6 +8,7 @@ create table if not exists public.books (
   theme text not null,
   title text not null,
   pages jsonb not null,
+  cover_image_url text,
   created_at timestamptz default now()
 );
 

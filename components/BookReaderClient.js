@@ -7,12 +7,12 @@ const PAGE_COLORS = [
   "#E2F0F5", "#F5E8E2", "#E8F5EC", "#F5F0E1", "#FDEBD3",
 ];
 
-export default function BookReaderClient({ title, pages, childName, shareId, showActions, onMakeAnother }) {
+export default function BookReaderClient({ title, pages, childName, shareId, coverImage, showActions, onMakeAnother }) {
   const [i, setI] = useState(0);
   const [fading, setFading] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const allPages = [{ isCover: true }, ...pages];
+  const allPages = [{ isCover: true, imageUrl: coverImage || null }, ...pages];
   const total = allPages.length;
   const current = allPages[i];
 

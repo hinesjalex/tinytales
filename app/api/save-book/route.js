@@ -5,28 +5,28 @@ import { nanoid } from "nanoid";
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name, age, theme, title, pages } = body;
+    const { name, age, theme, title, pages, coverImageUrl } = body;
 
     if (!name || !title || !pages) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const shareId = nanoid(10);
-    const pagesWithImages = pages.map((page) => ({ ...page, imageUrl: null }));
 
     await saveBook({
       shareId,
       name,
-      age,
+      age: age || 5,
       theme: theme || "custom",
       title,
-      pages: pagesWithImages,
+      pages,
+      coverImageUrl: coverImageUrl || null,
     });
 
     return NextResponse.json({
       shareId,
       title,
-      pages: pagesWithImages,
+      pages,
       childName: name,
     });
   } catch (err) {

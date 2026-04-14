@@ -49,6 +49,7 @@ export default async function SharedBookPage({ params }) {
         pages={book.pages}
         childName={book.child_name}
         shareId={book.share_id}
+        coverImage={book.cover_image_url}
       />
     </div>
   );

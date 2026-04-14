@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import Link from "next/link";
+import { uploadBookImages } from "@/lib/clientImageUpload";
 
 const MAX_PAGES = 20;
 
@@ -504,7 +505,7 @@ function BulkPasteBar({ pages, setPages, name }) {
 /* ============================================================
    BOOK PREVIEW — swipeable reader
    ============================================================ */
-function BookPreview({ name, title, pages, coverImage, onBack, onFinish }) {
+function BookPreview({ name, title, pages, coverImage, saving, onBack, onFinish }) {
   const [i, setI] = useState(0);
   const [fading, setFading] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
@@ -531,8 +532,8 @@ function BookPreview({ name, title, pages, coverImage, onBack, onFinish }) {
       {/* Top bar */}
       <div className="w-full max-w-[400px] flex justify-between items-center mb-6">
         <button onClick={onBack} className="text-sm text-warm-500 font-body">← Edit pages</button>
-        <button onClick={() => onFinish(titleVal)} className="px-5 py-2 text-sm font-semibold rounded-full bg-accent text-cream font-body">
-          Finish →
+        <button onClick={() => onFinish(titleVal)} disabled={saving} className={`px-5 py-2 text-sm font-semibold rounded-full font-body ${saving ? "bg-warm-300 text-warm-500" : "bg-accent text-cream"}`}>
+          {saving ? "Saving…" : "Finish →"}
         </button>
       </div>
 
@@ -804,10 +805,25 @@ export default function CreatePage() {
   };
 
   // Finish → save book
+  const [saving, setSaving] = useState(false);
+
   const handleFinish = async (finalTitle) => {
     setTitle(finalTitle);
+    setSaving(true);
 
     try {
+      // Generate a share ID upfront for storage paths
+      const tempShareId = Math.random().toString(36).slice(2, 12);
+
+      // Step 1: Upload all images to Supabase Storage (client-side, bypasses Vercel limits)
+      const filledPages = pages.filter((p) => p.text.trim() || p.imageUrl || p.textPosition === "hidden");
+      const { coverImageUrl, pages: pagesWithUrls } = await uploadBookImages(
+        tempShareId,
+        coverImage,
+        filledPages
+      );
+
+      // Step 2: Save book with permanent image URLs
       const res = await fetch("/api/save-book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -816,16 +832,22 @@ export default function CreatePage() {
           age: 5,
           theme: "custom",
           title: finalTitle,
-          pages: pages.filter((p) => p.text.trim()),
+          pages: pagesWithUrls,
+          coverImageUrl,
         }),
       });
 
       if (res.ok) {
         const result = await res.json();
         setShareId(result.shareId);
+      } else {
+        console.error("Save failed:", await res.text());
       }
-    } catch {}
+    } catch (err) {
+      console.error("Finish error:", err);
+    }
 
+    setSaving(false);
     setPhase("finish");
   };
 
@@ -876,6 +898,7 @@ export default function CreatePage() {
           title={title}
           pages={pages}
           coverImage={coverImage}
+          saving={saving}
           onBack={() => setPhase("editor")}
           onFinish={handleFinish}
         />
