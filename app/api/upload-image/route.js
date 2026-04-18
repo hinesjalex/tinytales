@@ -70,7 +70,11 @@ export async function POST(request) {
     });
 
     if (error) {
-      console.error("Supabase storage error:", error);
+      console.error("Supabase storage error:", {
+        message: error.message,
+        name: error.name,
+        statusCode: error.statusCode,
+      });
       return NextResponse.json({ error: `Upload failed: ${error.message}` }, { status: 500 });
     }
 
