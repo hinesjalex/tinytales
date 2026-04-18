@@ -35,7 +35,7 @@ function Counter({ end, suffix = "", prefix = "" }) {
     }, 30);
     return () => clearInterval(t);
   }, [visible, end]);
-  return <span ref={ref}>{prefix}{val.toLocaleString()}{suffix}</span>;
+  return <span ref={ref}>{prefix}{val.toLocaleString("en-US")}{suffix}</span>;
 }
 
 /* --- Sample book pages --- */
