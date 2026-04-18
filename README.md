@@ -5,85 +5,81 @@ Personalized AI-generated storybooks where your child is the hero.
 ## Quick Start
 
 ```bash
-# Install dependencies
 npm install
-
-# Copy env and fill in your keys
-cp .env.example .env.local
-
-# Set up Supabase
-# 1. Create a project at supabase.com
-# 2. Run supabase/schema.sql in the SQL Editor
-# 3. Copy project URL and anon key into .env.local
-
-# Run dev server
+cp .env.example .env.local   # fill in the keys
+# Run supabase/schema.sql in the Supabase SQL Editor (one-time).
 npm run dev
 ```
+
+See [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) for a full orientation (product, architecture, risks, priorities) and [DEPLOY.md](DEPLOY.md) for Vercel deploy steps.
 
 ## Architecture
 
 ```
 app/
-  page.js              → Landing + full funnel (client component)
-  layout.js            → Root layout with meta tags
-  api/generate/route.js → Story generation endpoint
-  book/[id]/page.js    → Shareable book page (SSR + OG tags)
+  page.js                          → landing page
+  create/page.js                   → the full funnel (all screens in one client component)
+  book/[id]/page.js                → shareable book page (SSR + OG meta)
+  privacy/page.js                  → privacy policy
+  api/
+    generate-story/route.js        → model-agnostic story text generation
+    generate-page-image/route.js   → per-page illustration (lazy char reference + chain anchor)
+    save-book/route.js             → server-side book insert (service role)
+    upload-image/route.js          → base64 → Supabase Storage (service role)
 
 components/
-  NameGate.js          → Name input (step 0)
-  SampleBook.js        → Personalized sample story (the hook)
-  Onboarding.js        → Age + theme selection (steps 1-2)
-  GeneratingScreen.js  → Progress UI while API works
-  BookReaderClient.js  → Book reader + share actions
+  BookReaderClient.js              → page-by-page reader used on /book/[id]
 
 lib/
-  ai.js                → Model-agnostic AI layer (Anthropic/OpenAI/Google)
-  prompts.js           → Story generation prompts + page count config
-  supabase.js          → Database client + book CRUD
+  ai.js                            → AI text adapters (Anthropic | OpenAI | Google)
+  images.js                        → image adapters (fal.ai Nano Banana 2 | OpenAI)
+  prompts.js                       → story prompts, page count tiers by age
+  supabase.js                      → browser (anon) client + public read helpers
+  supabaseAdmin.js                 → server-only client using SUPABASE_SERVICE_ROLE_KEY
+  rateLimit.js                     → shared in-memory IP rate limiter
+  clientImageUpload.js             → browser helper that POSTs to /api/upload-image
 ```
 
-## AI Provider
+## Providers
 
-Set `AI_PROVIDER` in `.env.local` to switch models:
+**Text** — `AI_PROVIDER=anthropic | openai | google` (see `lib/ai.js`). Each provider needs its own API key; the layer normalizes the response to raw text.
 
-- `anthropic` → Claude (default)
-- `openai` → GPT-4o
-- `google` → Gemini
+**Images** — `IMAGE_PROVIDER=nanobanana | openai` (see `lib/images.js`). The pipeline generates a three-angle character turnaround sheet once per book, then chain-anchors every page against that sheet and the previous page's output to keep the child visually consistent.
 
-Each provider needs its own API key. The abstraction layer normalizes responses.
+## Data & writes
+
+- Single Supabase table `books` with a JSONB `pages` column (one row per shared book).
+- Supabase Storage bucket `illustrations` is public-read.
+- All writes (book rows, image uploads) go through server routes using `SUPABASE_SERVICE_ROLE_KEY`. Anon clients only ever read.
+- Rate limiting is best-effort in-memory per-instance via `lib/rateLimit.js`; for a hard ceiling, move to Upstash / Vercel KV.
 
 ## Deploy
-
-See **DEPLOY.md** for the full step-by-step guide.
-
-**Important:** Sequential illustration generation takes 60-90s.
-Vercel free tier has a 60s function timeout. You'll need Vercel Pro ($20/mo)
-for the 300s timeout, or reduce page counts to fit within 60s.
 
 ```bash
 npx vercel
 ```
 
-Set environment variables in Vercel dashboard. Done.
+Set every variable from `.env.example` in Vercel's dashboard (critically: `SUPABASE_SERVICE_ROLE_KEY` — server-only, not `NEXT_PUBLIC_*`). Image generation on a full book can take 2–3 minutes; `vercel.json` sets `maxDuration: 180` on the image route, which requires Vercel Pro. See [DEPLOY.md](DEPLOY.md) for the full walkthrough.
 
 ## V1 Scope
 
-- [x] Name-first hook with personalized sample
-- [x] Age + theme onboarding (2 steps)
+- [x] Landing page with sample mini-book
+- [x] Name → mode picker (AI assist vs. blank editor)
 - [x] AI story generation (model-agnostic)
-- [x] Book reader with page-by-page navigation
-- [x] Shareable book links with OG meta tags
-- [x] Rate limiting (10 books/hour/IP)
+- [x] Per-page manual editing: text, upload, AI-generated illustration
+- [x] Cover upload or AI generation
+- [x] Character-consistent illustrations (reference sheet + chain anchoring)
+- [x] Shareable `/book/[id]` with OG tags
+- [x] Server-side writes with service role; public reads only
+- [x] IP rate limiting on every generate/write route
 - [x] Input validation + name sanitization
-- [ ] Pre-made illustration assets (in progress)
-- [ ] Privacy policy page
-- [ ] Analytics
+- [x] Privacy policy page
 
 ## Not in V1
 
-- Photo upload (COPPA — deferred to V2)
+- Photo upload (COPPA — deferred)
 - Accounts / auth
 - Payment
 - Voice narration
-- Print-on-demand
+- Print-on-demand / hardcover fulfillment
 - Multiple illustration styles

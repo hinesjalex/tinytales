@@ -142,7 +142,7 @@ function AIStoryGenerator({ name, onStoryGenerated, onBack }) {
       }
 
       const result = await res.json();
-      onStoryGenerated(result);
+      onStoryGenerated(result, age);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -196,9 +196,13 @@ function AIStoryGenerator({ name, onStoryGenerated, onBack }) {
 /* ============================================================
    PAGE EDITOR — single page with text + illustration
    ============================================================ */
-function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfter, onMoveUp, onMoveDown }) {
+function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfter, onMoveUp, onMoveDown, name, age, referenceUrl, setReferenceUrl, previousPageUrl }) {
   const fileRef = useRef(null);
   const [showIllustrationOptions, setShowIllustrationOptions] = useState(false);
+  const [showGenerate, setShowGenerate] = useState(false);
+  const [hint, setHint] = useState(page.illustrationHint || "");
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState(null);
 
   const handleImageUpload = (e) => {
     const file = e.target.files?.[0];
@@ -206,6 +210,40 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
     const reader = new FileReader();
     reader.onload = (ev) => onChange({ ...page, imageUrl: ev.target.result });
     reader.readAsDataURL(file);
+  };
+
+  const handleGenerate = async () => {
+    const h = (hint || "").trim();
+    if (!h) { setGenError("Describe what this page should show"); return; }
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const res = await fetch("/api/generate-page-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          age,
+          referenceUrl,
+          previousPageUrl,
+          illustrationHint: h,
+          pageNumber: pageIndex + 1,
+          isCover: false,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Generation failed");
+      }
+      const { imageUrl, referenceUrl: newRef } = await res.json();
+      onChange({ ...page, imageUrl, illustrationHint: h });
+      if (newRef && !referenceUrl) setReferenceUrl(newRef);
+      setShowGenerate(false);
+    } catch (err) {
+      setGenError(err.message);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -237,14 +275,46 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
             </div>
           )}
 
-          {showIllustrationOptions && !page.imageUrl && (
+          {showIllustrationOptions && !page.imageUrl && !showGenerate && (
             <div className="flex gap-2 mt-3">
               <button onClick={() => fileRef.current?.click()} className="flex-1 py-2 text-xs font-semibold rounded-lg border border-warm-200 hover:border-accent transition-colors">
                 📁 Upload
               </button>
-              <button className="flex-1 py-2 text-xs font-semibold rounded-lg border border-warm-200 hover:border-accent transition-colors opacity-50" title="Coming after story is complete">
+              <button
+                onClick={() => { setShowGenerate(true); setHint(page.illustrationHint || ""); setGenError(null); }}
+                className="flex-1 py-2 text-xs font-semibold rounded-lg border border-warm-200 hover:border-accent transition-colors"
+              >
                 ✨ Generate
               </button>
+            </div>
+          )}
+
+          {showGenerate && !page.imageUrl && (
+            <div className="mt-3 p-3 rounded-lg border border-warm-200 bg-cream/50">
+              <label className="text-[11px] font-semibold text-warm-500 uppercase tracking-wider mb-1 block">
+                What should this page show?
+              </label>
+              <textarea
+                value={hint}
+                onChange={(e) => setHint(e.target.value)}
+                placeholder="e.g. a small fox with golden eyes on a forest path at dusk"
+                maxLength={600}
+                className="w-full min-h-[70px] text-[13px] p-2 rounded-md border border-warm-200 bg-white outline-none focus:border-accent transition-colors resize-y font-body"
+              />
+              {genError && <div className="text-[11px] text-red-500 mt-1">{genError}</div>}
+              <div className="flex gap-2 mt-2 items-center">
+                <button onClick={() => setShowGenerate(false)} disabled={generating} className="text-[11px] text-warm-500 font-body">Cancel</button>
+                <button
+                  onClick={handleGenerate}
+                  disabled={generating || !hint.trim()}
+                  className={`ml-auto px-3 py-1.5 text-[12px] font-semibold rounded-md font-body transition-all ${generating || !hint.trim() ? "bg-warm-200 text-warm-500" : "bg-ink text-cream"}`}
+                >
+                  {generating ? "Generating…" : "Generate →"}
+                </button>
+              </div>
+              {generating && !referenceUrl && (
+                <div className="text-[11px] text-warm-500 mt-2 italic">First image takes longer — creating the character reference…</div>
+              )}
             </div>
           )}
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
@@ -300,9 +370,39 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
 /* ============================================================
    BOOK EDITOR — all pages, toolbar, preview toggle
    ============================================================ */
-function BookEditor({ name, pages, setPages, title, setTitle, coverImage, setCoverImage, onPreview }) {
+function BookEditor({ name, age, pages, setPages, title, setTitle, coverImage, setCoverImage, referenceUrl, setReferenceUrl, onPreview }) {
   const renumber = (pgs) => pgs.map((p, i) => ({ ...p, pageNumber: i + 1 }));
   const coverFileRef = useRef(null);
+  const [coverGen, setCoverGen] = useState({ open: false, hint: "", loading: false, error: null });
+
+  const handleGenerateCover = async () => {
+    const h = (coverGen.hint || "").trim();
+    if (!h) { setCoverGen((s) => ({ ...s, error: "Describe the cover scene" })); return; }
+    setCoverGen((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const res = await fetch("/api/generate-page-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name, age, referenceUrl,
+          previousPageUrl: null,
+          illustrationHint: h,
+          pageNumber: 1,
+          isCover: true,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Generation failed");
+      }
+      const { imageUrl, referenceUrl: newRef } = await res.json();
+      setCoverImage(imageUrl);
+      if (newRef && !referenceUrl) setReferenceUrl(newRef);
+      setCoverGen({ open: false, hint: "", loading: false, error: null });
+    } catch (err) {
+      setCoverGen((s) => ({ ...s, loading: false, error: err.message }));
+    }
+  };
 
   const updatePage = (idx, updated) => {
     const next = [...pages];
@@ -378,13 +478,43 @@ function BookEditor({ name, pages, setPages, title, setTitle, coverImage, setCov
                   <button onClick={() => { setCoverImage(null); if (coverFileRef.current) coverFileRef.current.value = ""; }} className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/50 text-white text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                 </div>
               ) : (
-                <div className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-accent/30 flex flex-col items-center justify-center cursor-pointer bg-accent/[0.03] hover:border-accent transition-colors" onClick={() => coverFileRef.current?.click()}>
+                <div className="w-full aspect-[3/4] rounded-xl border-2 border-dashed border-accent/30 flex flex-col items-center justify-center bg-accent/[0.03]">
                   <div className="text-3xl mb-2">📕</div>
-                  <div className="text-xs text-accent font-medium">Upload cover illustration</div>
-                  <div className="text-[10px] text-warm-400 mt-0.5">Or leave blank for a text cover</div>
+                  <div className="text-xs text-accent font-medium mb-3">Add a cover</div>
+                  <div className="flex gap-2">
+                    <button onClick={() => coverFileRef.current?.click()} className="px-3 py-1.5 text-[11px] font-semibold rounded-md border border-warm-200 bg-white hover:border-accent transition-colors">📁 Upload</button>
+                    <button onClick={() => setCoverGen((s) => ({ ...s, open: true, hint: s.hint, error: null }))} className="px-3 py-1.5 text-[11px] font-semibold rounded-md border border-warm-200 bg-white hover:border-accent transition-colors">✨ Generate</button>
+                  </div>
+                  <div className="text-[10px] text-warm-400 mt-3">Or leave blank for a text cover</div>
                 </div>
               )}
               <input ref={coverFileRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
+              {coverGen.open && !coverImage && (
+                <div className="mt-3 p-3 rounded-lg border border-warm-200 bg-cream/50">
+                  <label className="text-[11px] font-semibold text-warm-500 uppercase tracking-wider mb-1 block">What should the cover show?</label>
+                  <textarea
+                    value={coverGen.hint}
+                    onChange={(e) => setCoverGen((s) => ({ ...s, hint: e.target.value }))}
+                    placeholder={`${name} standing at the edge of a magical forest at sunset`}
+                    maxLength={600}
+                    className="w-full min-h-[70px] text-[13px] p-2 rounded-md border border-warm-200 bg-white outline-none focus:border-accent transition-colors resize-y font-body"
+                  />
+                  {coverGen.error && <div className="text-[11px] text-red-500 mt-1">{coverGen.error}</div>}
+                  <div className="flex gap-2 mt-2 items-center">
+                    <button onClick={() => setCoverGen({ open: false, hint: "", loading: false, error: null })} disabled={coverGen.loading} className="text-[11px] text-warm-500 font-body">Cancel</button>
+                    <button
+                      onClick={handleGenerateCover}
+                      disabled={coverGen.loading || !coverGen.hint.trim()}
+                      className={`ml-auto px-3 py-1.5 text-[12px] font-semibold rounded-md font-body transition-all ${coverGen.loading || !coverGen.hint.trim() ? "bg-warm-200 text-warm-500" : "bg-ink text-cream"}`}
+                    >
+                      {coverGen.loading ? "Generating…" : "Generate →"}
+                    </button>
+                  </div>
+                  {coverGen.loading && !referenceUrl && (
+                    <div className="text-[11px] text-warm-500 mt-2 italic">First image takes longer — creating the character reference…</div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Cover title */}
@@ -405,19 +535,33 @@ function BookEditor({ name, pages, setPages, title, setTitle, coverImage, setCov
         {/* Bulk paste option */}
         <BulkPasteBar pages={pages} setPages={setPages} name={name} />
 
-        {pages.map((page, idx) => (
-          <PageEditor
-            key={page.id}
-            page={page}
-            pageIndex={idx}
-            totalPages={pages.length}
-            onChange={(updated) => updatePage(idx, updated)}
-            onDelete={() => deletePage(idx)}
-            onAddAfter={() => addPageAfter(idx)}
-            onMoveUp={() => movePage(idx, -1)}
-            onMoveDown={() => movePage(idx, 1)}
-          />
-        ))}
+        {pages.map((page, idx) => {
+          const priorImg = pages
+            .slice(0, idx)
+            .reverse()
+            .find((p) => p.imageUrl && /^https?:\/\//i.test(p.imageUrl));
+          const previousPageUrl =
+            priorImg?.imageUrl ||
+            (coverImage && /^https?:\/\//i.test(coverImage) ? coverImage : null);
+          return (
+            <PageEditor
+              key={page.id}
+              page={page}
+              pageIndex={idx}
+              totalPages={pages.length}
+              onChange={(updated) => updatePage(idx, updated)}
+              onDelete={() => deletePage(idx)}
+              onAddAfter={() => addPageAfter(idx)}
+              onMoveUp={() => movePage(idx, -1)}
+              onMoveDown={() => movePage(idx, 1)}
+              name={name}
+              age={age}
+              referenceUrl={referenceUrl}
+              setReferenceUrl={setReferenceUrl}
+              previousPageUrl={previousPageUrl}
+            />
+          );
+        })}
 
         {pages.length < MAX_PAGES && (
           <button onClick={() => addPageAfter(pages.length - 1)} className="w-full py-4 rounded-2xl border-2 border-dashed border-warm-200 text-warm-400 text-sm font-medium hover:border-accent hover:text-accent transition-colors">
@@ -777,9 +921,11 @@ function FinishScreen({ name, title, pages, coverImage, shareId, onEdit, onMakeA
 export default function CreatePage() {
   const [phase, setPhase] = useState("setup"); // setup | pick_mode | ai_gen | editor | preview | finish
   const [name, setName] = useState("");
+  const [age, setAge] = useState(5);
   const [pages, setPages] = useState(initialBook());
   const [title, setTitle] = useState("");
   const [coverImage, setCoverImage] = useState(null);
+  const [referenceUrl, setReferenceUrl] = useState(null);
   const [shareId, setShareId] = useState(null);
 
   // Setup → mode picker
@@ -790,7 +936,8 @@ export default function CreatePage() {
   };
 
   // AI story generated → fill pages and go to editor
-  const handleStoryGenerated = (result) => {
+  const handleStoryGenerated = (result, chosenAge) => {
+    if (chosenAge) setAge(chosenAge);
     setTitle(result.title);
     const newPages = result.pages.map((p, i) => ({
       id: crypto.randomUUID(),
@@ -829,7 +976,7 @@ export default function CreatePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
-          age: 5,
+          age,
           theme: "custom",
           title: finalTitle,
           pages: pagesWithUrls,
@@ -882,12 +1029,15 @@ export default function CreatePage() {
       {phase === "editor" && (
         <BookEditor
           name={name}
+          age={age}
           pages={pages}
           setPages={setPages}
           title={title}
           setTitle={setTitle}
           coverImage={coverImage}
           setCoverImage={setCoverImage}
+          referenceUrl={referenceUrl}
+          setReferenceUrl={setReferenceUrl}
           onPreview={() => setPhase("preview")}
         />
       )}
@@ -916,6 +1066,8 @@ export default function CreatePage() {
             setPages(initialBook());
             setTitle("");
             setCoverImage(null);
+            setReferenceUrl(null);
+            setAge(5);
             setShareId(null);
             setPhase("setup");
           }}

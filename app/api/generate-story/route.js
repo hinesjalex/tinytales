@@ -1,28 +1,14 @@
 import { NextResponse } from "next/server";
 import { generate } from "@/lib/ai";
 import { buildSystemPrompt, buildUserPrompt } from "@/lib/prompts";
+import { checkLimit, getClientIp } from "@/lib/rateLimit";
 
-// Basic in-memory rate limiting
-const rateLimit = new Map();
-const RATE_LIMIT_WINDOW = 60 * 60 * 1000;
-const RATE_LIMIT_MAX = 20; // more generous since text is cheap
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimit.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW) {
-    rateLimit.set(ip, { windowStart: now, count: 1 });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count++;
-  return true;
-}
+const RATE = { max: 20, windowMs: 60 * 60 * 1000 };
 
 export async function POST(request) {
   try {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    if (!checkRateLimit(ip)) {
+    const ip = getClientIp(request);
+    if (!checkLimit(`story:${ip}`, RATE)) {
       return NextResponse.json(
         { error: "Too many stories generated. Please try again later." },
         { status: 429 }

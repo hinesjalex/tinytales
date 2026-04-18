@@ -18,15 +18,12 @@ create index if not exists idx_books_share_id on public.books (share_id);
 -- Enable Row Level Security (public read, no public write)
 alter table public.books enable row level security;
 
--- Anyone can read books (for shared links)
+-- Anyone can read books (for shared links).
+-- Writes go through the server using SUPABASE_SERVICE_ROLE_KEY, which
+-- bypasses RLS — so no public insert/update policies are defined.
 create policy "Books are publicly readable"
   on public.books for select
   using (true);
-
--- Only the API (service role or anon with insert) can create books
-create policy "API can insert books"
-  on public.books for insert
-  with check (true);
 
 -- ============================================
 -- Storage: Create bucket for illustrations
@@ -49,12 +46,8 @@ values (
 )
 on conflict (id) do nothing;
 
--- Allow public read access to illustrations
+-- Public read access for rendering <img src="..."> from shared book pages.
+-- Uploads are performed server-side with the service role, which bypasses RLS.
 create policy "Illustrations are publicly readable"
   on storage.objects for select
   using (bucket_id = 'illustrations');
-
--- Allow API to upload illustrations
-create policy "API can upload illustrations"
-  on storage.objects for insert
-  with check (bucket_id = 'illustrations');

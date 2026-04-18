@@ -5,11 +5,8 @@
     "app/api/generate-story/route.js": {
       "maxDuration": 30
     },
-    "app/api/generate-preview-image/route.js": {
-      "maxDuration": 60
-    },
-    "app/api/generate-illustrations/route.js": {
-      "maxDuration": 300
+    "app/api/generate-page-image/route.js": {
+      "maxDuration": 180
     },
     "app/api/save-book/route.js": {
       "maxDuration": 10
