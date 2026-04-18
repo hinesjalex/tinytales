@@ -1,7 +1,0 @@
-{
-  "orgId": "team_qwRQEeOwG9CYThs1Av9dZYsI",
-  "settings": {
-    "framework": "nextjs",
-    "buildCommand": "next build"
-  }
-}

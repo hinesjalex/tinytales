@@ -13,6 +13,9 @@
     },
     "app/api/save-book/route.js": {
       "maxDuration": 10
+    },
+    "app/api/upload-image/route.js": {
+      "maxDuration": 30
     }
   }
 }
