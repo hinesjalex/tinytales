@@ -26,6 +26,7 @@ export async function POST(request) {
       illustrationHint,
       pageNumber,
       isCover,
+      characterDescription,
     } = body;
 
     if (!name || typeof name !== "string" || name.length > 30) {
@@ -50,10 +51,19 @@ export async function POST(request) {
     }
     const safeAge = Number.isFinite(age) && age >= 2 && age <= 9 ? age : 5;
 
+    const safeDescription =
+      typeof characterDescription === "string"
+        ? characterDescription.slice(0, 600).trim()
+        : "";
+
     // Lazily create the character reference sheet on first call.
     let ref = referenceUrl && typeof referenceUrl === "string" ? referenceUrl : null;
     if (!ref) {
-      ref = await generateCharacterReference({ name: safeName, age: safeAge });
+      ref = await generateCharacterReference({
+        name: safeName,
+        age: safeAge,
+        description: safeDescription || undefined,
+      });
     }
 
     const imageUrl = await generatePageIllustration({
