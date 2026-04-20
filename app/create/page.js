@@ -196,7 +196,7 @@ function AIStoryGenerator({ name, onStoryGenerated, onBack }) {
 /* ============================================================
    PAGE EDITOR — single page with text + illustration
    ============================================================ */
-function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfter, onMoveUp, onMoveDown, name, age, referenceUrl, setReferenceUrl, previousPageUrl }) {
+function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfter, onMoveUp, onMoveDown, name, age, referenceUrl, setReferenceUrl, previousPageUrl, characterDescription }) {
   const fileRef = useRef(null);
   const [showIllustrationOptions, setShowIllustrationOptions] = useState(false);
   const [showGenerate, setShowGenerate] = useState(false);
@@ -229,6 +229,7 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
           illustrationHint: h,
           pageNumber: pageIndex + 1,
           isCover: false,
+          characterDescription,
         }),
       });
       if (!res.ok) {
@@ -368,9 +369,158 @@ function PageEditor({ page, pageIndex, totalPages, onChange, onDelete, onAddAfte
 }
 
 /* ============================================================
+   CHARACTER CARD — what the main character looks like
+   ============================================================ */
+
+const HAIR_COLORS = ["Blonde", "Brown", "Black", "Red", "Auburn", "Light brown", "Dark brown", "Gray/Silver"];
+const HAIR_STYLES = ["Straight short", "Straight long", "Curly short", "Curly long", "Wavy", "Braids", "Ponytail", "Buzz cut", "Afro"];
+const SKIN_TONES = ["Light", "Fair", "Medium", "Olive", "Tan", "Brown", "Dark brown", "Deep"];
+const EYE_COLORS = ["Brown", "Blue", "Green", "Hazel", "Gray"];
+const CLOTHING_OPTIONS = ["Let AI decide", "Casual (t-shirt & jeans)", "Dress/skirt", "Overalls", "Pajamas", "Adventure outfit"];
+
+function buildCharacterDescription(c) {
+  if (!c || c.mode !== "describe") return "";
+  const parts = [];
+  const hairBits = [c.hairStyle, c.hairColor].filter(Boolean).join(" ").trim().toLowerCase();
+  if (hairBits) parts.push(`${hairBits} hair`);
+  if (c.skinTone) parts.push(`${c.skinTone.toLowerCase()} skin`);
+  if (c.eyeColor) parts.push(`${c.eyeColor.toLowerCase()} eyes`);
+  if (c.clothing && c.clothing !== "Let AI decide") parts.push(`wearing ${c.clothing.toLowerCase()}`);
+  return parts.length ? `with ${parts.join(", ")}` : "";
+}
+
+function summarizeCharacter(c) {
+  if (!c || c.mode !== "describe") return "";
+  const items = [];
+  const hairBits = [c.hairStyle, c.hairColor].filter(Boolean).join(" ").trim();
+  if (hairBits) items.push(`${hairBits} hair`);
+  if (c.skinTone) items.push(`${c.skinTone} skin`);
+  if (c.eyeColor) items.push(`${c.eyeColor} eyes`);
+  if (c.clothing && c.clothing !== "Let AI decide") items.push(c.clothing);
+  return items.join(" · ");
+}
+
+function PillRow({ label, options, value, onSelect }) {
+  return (
+    <div className="mb-4">
+      <label className="text-[11px] font-semibold text-warm-500 uppercase tracking-widest mb-2 block">{label}</label>
+      <div className="flex flex-wrap gap-2">
+        {options.map((opt) => (
+          <button
+            key={opt}
+            type="button"
+            onClick={() => onSelect(opt === value ? null : opt)}
+            className={`px-3.5 py-1.5 rounded-lg text-[13px] font-medium border-2 transition-all ${
+              value === opt
+                ? "border-accent bg-accent-light text-accent"
+                : "border-warm-200 bg-white text-ink hover:border-accent/50"
+            }`}
+          >
+            {opt}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CharacterCard({ name, character, setCharacter, onChange }) {
+  const [editing, setEditing] = useState(!character?.mode);
+
+  const updateField = (field, value) => {
+    const next = { ...(character || {}), mode: "describe", [field]: value };
+    setCharacter(next);
+    onChange?.();
+  };
+
+  const skip = () => {
+    setCharacter({ mode: "skip" });
+    setEditing(false);
+    onChange?.();
+  };
+
+  const hasSelections = character?.mode === "describe" && !!summarizeCharacter(character);
+
+  // --- Collapsed: described ---
+  if (!editing && character?.mode === "describe") {
+    return (
+      <div className="bg-white rounded-2xl border-2 border-accent/20 overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-accent/5 border-b border-accent/10">
+          <span className="text-xs font-semibold text-accent">✨ Main Character</span>
+          <button onClick={() => setEditing(true)} className="text-[11px] text-warm-500 hover:text-accent transition-colors">Edit</button>
+        </div>
+        <div className="px-4 py-3 text-[13px] text-warm-700">
+          {summarizeCharacter(character) || "No details yet"}
+        </div>
+      </div>
+    );
+  }
+
+  // --- Collapsed: skipped ---
+  if (!editing && character?.mode === "skip") {
+    return (
+      <div className="bg-white rounded-2xl border-2 border-accent/20 overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between px-4 py-2.5 bg-accent/5 border-b border-accent/10">
+          <span className="text-xs font-semibold text-accent">✨ Main Character</span>
+          <button onClick={() => setEditing(true)} className="text-[11px] text-warm-500 hover:text-accent transition-colors">Describe them</button>
+        </div>
+        <div className="px-4 py-3 text-[13px] text-warm-500 italic">AI will choose how they look</div>
+      </div>
+    );
+  }
+
+  // --- Expanded editor ---
+  return (
+    <div className="bg-white rounded-2xl border-2 border-accent/20 overflow-hidden shadow-sm">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-accent/5 border-b border-accent/10">
+        <span className="text-xs font-semibold text-accent">✨ Main Character</span>
+        {hasSelections && (
+          <button onClick={() => setEditing(false)} className="text-[11px] font-semibold text-accent hover:underline">Done</button>
+        )}
+      </div>
+      <div className="p-4">
+        <h3 className="font-display text-lg tracking-tight mb-1">What does {name || "your child"} look like?</h3>
+        <p className="text-[12px] text-warm-500 mb-4">The cover and every page will match these choices.</p>
+
+        <div className="flex gap-2 mb-5">
+          <button type="button" className="flex-1 py-2 text-xs font-semibold rounded-lg border-2 border-accent bg-accent-light text-accent">
+            ✏️ Describe
+          </button>
+          <button
+            type="button"
+            disabled
+            title="Coming soon"
+            className="flex-1 py-2 text-xs font-semibold rounded-lg border border-warm-200 text-warm-400 cursor-not-allowed"
+          >
+            📷 Upload photo · Coming soon
+          </button>
+        </div>
+
+        <PillRow label="Hair color" options={HAIR_COLORS} value={character?.hairColor} onSelect={(v) => updateField("hairColor", v)} />
+        <PillRow label="Hair style" options={HAIR_STYLES} value={character?.hairStyle} onSelect={(v) => updateField("hairStyle", v)} />
+        <PillRow label="Skin tone" options={SKIN_TONES} value={character?.skinTone} onSelect={(v) => updateField("skinTone", v)} />
+        <PillRow label="Eye color" options={EYE_COLORS} value={character?.eyeColor} onSelect={(v) => updateField("eyeColor", v)} />
+        <PillRow label="Clothing (optional)" options={CLOTHING_OPTIONS} value={character?.clothing} onSelect={(v) => updateField("clothing", v)} />
+
+        <div className="flex justify-between items-center pt-2 border-t border-ink/[0.04]">
+          <button onClick={skip} className="text-[12px] text-warm-500 hover:text-accent transition-colors">
+            Skip — surprise me
+          </button>
+          {hasSelections && (
+            <button onClick={() => setEditing(false)} className="text-[12px] font-semibold bg-ink text-cream px-4 py-2 rounded-md">
+              Done
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================================================
    BOOK EDITOR — all pages, toolbar, preview toggle
    ============================================================ */
-function BookEditor({ name, age, pages, setPages, title, setTitle, coverImage, setCoverImage, referenceUrl, setReferenceUrl, onPreview }) {
+function BookEditor({ name, age, pages, setPages, title, setTitle, coverImage, setCoverImage, referenceUrl, setReferenceUrl, character, setCharacter, characterDescription, onCharacterChange, onPreview }) {
   const renumber = (pgs) => pgs.map((p, i) => ({ ...p, pageNumber: i + 1 }));
   const coverFileRef = useRef(null);
   const [coverGen, setCoverGen] = useState({ open: false, hint: "", loading: false, error: null });
@@ -389,6 +539,7 @@ function BookEditor({ name, age, pages, setPages, title, setTitle, coverImage, s
           illustrationHint: h,
           pageNumber: 1,
           isCover: true,
+          characterDescription,
         }),
       });
       if (!res.ok) {
@@ -463,6 +614,14 @@ function BookEditor({ name, age, pages, setPages, title, setTitle, coverImage, s
 
       {/* Pages */}
       <div className="max-w-[700px] mx-auto px-6 py-8 flex flex-col gap-4">
+
+        {/* Character card (defines the main character's appearance) */}
+        <CharacterCard
+          name={name}
+          character={character}
+          setCharacter={setCharacter}
+          onChange={onCharacterChange}
+        />
 
         {/* Cover card */}
         <div className="bg-white rounded-2xl border-2 border-accent/20 overflow-hidden shadow-sm">
@@ -559,6 +718,7 @@ function BookEditor({ name, age, pages, setPages, title, setTitle, coverImage, s
               referenceUrl={referenceUrl}
               setReferenceUrl={setReferenceUrl}
               previousPageUrl={previousPageUrl}
+              characterDescription={characterDescription}
             />
           );
         })}
@@ -926,7 +1086,14 @@ export default function CreatePage() {
   const [title, setTitle] = useState("");
   const [coverImage, setCoverImage] = useState(null);
   const [referenceUrl, setReferenceUrl] = useState(null);
+  const [character, setCharacter] = useState(null);
   const [shareId, setShareId] = useState(null);
+
+  const characterDescription = buildCharacterDescription(character);
+
+  // Editing the character invalidates any cached reference sheet — the next
+  // image generation will rebuild it from the new description.
+  const handleCharacterChange = () => setReferenceUrl(null);
 
   // Setup → mode picker
   const handleStart = (childName) => {
@@ -1038,6 +1205,10 @@ export default function CreatePage() {
           setCoverImage={setCoverImage}
           referenceUrl={referenceUrl}
           setReferenceUrl={setReferenceUrl}
+          character={character}
+          setCharacter={setCharacter}
+          characterDescription={characterDescription}
+          onCharacterChange={handleCharacterChange}
           onPreview={() => setPhase("preview")}
         />
       )}
@@ -1067,6 +1238,7 @@ export default function CreatePage() {
             setTitle("");
             setCoverImage(null);
             setReferenceUrl(null);
+            setCharacter(null);
             setAge(5);
             setShareId(null);
             setPhase("setup");
