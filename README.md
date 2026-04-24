@@ -83,3 +83,5 @@ Set every variable from `.env.example` in Vercel's dashboard (critically: `SUPAB
 - Voice narration
 - Print-on-demand / hardcover fulfillment
 - Multiple illustration styles
+
+<!-- Claude Code connection test — safe to revert. -->
